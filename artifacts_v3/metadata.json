@@ -1,0 +1,38 @@
+{
+  "model": "Logistic Regression",
+  "validation_micro_f1": 0.7282498080734141,
+  "test_metrics": {
+    "Micro F1": 0.7285443422888419,
+    "Macro F1": 0.5391263676774163,
+    "Weighted F1": 0.6981610843116577,
+    "Precision": 0.7800291098513865,
+    "Recall": 0.6834351298744882,
+    "Hamming Loss": 0.026825754562729242,
+    "Subset Accuracy": 0.6792611251049538
+  },
+  "domains": [
+    "Accounting & Finance",
+    "Cloud & DevOps",
+    "Creative & Design",
+    "Customer Service",
+    "Cybersecurity",
+    "Data Engineering",
+    "Data Science & Analytics",
+    "Education & Training",
+    "Engineering (General)",
+    "Healthcare & Medical",
+    "Human Resources",
+    "Legal",
+    "Machine Learning / AI",
+    "Marketing & PR",
+    "Operations & Logistics",
+    "Project Management",
+    "Sales & Retail",
+    "Software Engineering",
+    "Writing & Content"
+  ],
+  "dataset_file": "jobs_merged_final.csv",
+  "label_source": "weak labels inferred from job titles",
+  "job_count": 200234,
+  "training_rows": 138947
+}

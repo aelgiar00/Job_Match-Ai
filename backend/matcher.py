@@ -33,34 +33,23 @@ def calculate_skill_gap(job_skills_list, user_skills_set):
     return matched, missing
 
 def calculate_match_score(cv_data, jobs_df):
-    # استدعاء الموديل (تم تعديل المسار لـ v5 تلقائياً من cv_analyzer)
     _, _, skills_vectorizer, _ = load_models()
     
     if not skills_vectorizer or jobs_df.empty:
         return []
 
-    # تحضير مهارات المستخدم النظيفة
     user_skills_set = set(cv_data.get('skills', []))
-    user_skills_text = cv_data.get('skills_text', '')
-    
-    # إذا لم يكن هناك مهارات مستخرجة، نستخدم النص كاحتياطي
-    if not user_skills_text:
-         user_skills_text = cv_data.get('cleaned_text', '')
+    user_skills_text = cv_data.get('skills_text', '') or cv_data.get('cleaned_text', '')
 
     user_vec = skills_vectorizer.transform([user_skills_text])
-
     jobs_df = jobs_df.copy()
     
-    # تحديد عمود الوصف وتنظيف نصوص الوظائف
     desc_col = 'Description' if 'Description' in jobs_df.columns else 'Title'
     jobs_df['Clean_Description'] = (
         jobs_df['Title'].astype(str) + " " + jobs_df[desc_col].astype(str)
     ).apply(clean_text)
 
-    # تحويل نصوص الوظائف إلى مصفوفات رقمية للمطابقة
     cand_skills_mat = skills_vectorizer.transform(jobs_df['Clean_Description'])
-
-    # حساب دقة المطابقة الأساسية للمهارات
     jobs_df['Skill_Similarity'] = cosine_similarity(user_vec, cand_skills_mat)[0]
     
     exp_col = jobs_df['Experience_Level'] if 'Experience_Level' in jobs_df.columns else pd.Series([None]*len(jobs_df))
@@ -69,7 +58,6 @@ def calculate_match_score(cv_data, jobs_df):
     jobs_df['Exp_Score'] = exp_col.apply(lambda e: calculate_experience_score(e, cv_data.get('experience_level', 2.0)))
     jobs_df['Level_Score'] = lvl_col.apply(lambda l: calculate_level_score(l, cv_data.get('career_level', 'Entry Level')))
 
-    # الأوزان الجديدة: 70% مهارات تقنية ، 20% خبرة ، 10% مستوى
     jobs_df['Final_Score'] = (
         0.70 * jobs_df['Skill_Similarity'] +
         0.20 * jobs_df['Exp_Score'] +
@@ -80,14 +68,17 @@ def calculate_match_score(cv_data, jobs_df):
     top_jobs = jobs_df.sort_values('Final_Score', ascending=False)
     
     for _, row in top_jobs.iterrows():
-        # استخراج قائمة المهارات المطلوبة في هذه الوظيفة لتحديد الفجوة (Gap)
         job_vec = skills_vectorizer.transform([row['Clean_Description']])
         job_skills_list = skills_vectorizer.inverse_transform(job_vec)[0].tolist()
         
         matched, missing = calculate_skill_gap(job_skills_list, user_skills_set)
         
-        job_dict = row.to_dict()
+        # تنظيف القيم من NaN لضمان التوافق مع JSON في FastAPI
+        job_dict = {k: (None if pd.isna(v) else v) for k, v in row.to_dict().items()}
         job_dict["Match_Score"] = min(int(row['Final_Score'] * 100), 99)
+        job_dict["Skill_Pct"] = round(min(float(row['Skill_Similarity']) * 100, 100), 1)
+        job_dict["Exp_Pct"] = round(min(float(row['Exp_Score']) * 100, 100), 1)
+        job_dict["Level_Pct"] = round(min(float(row['Level_Score']) * 100, 100), 1)
         job_dict["Matched_Skills"] = matched
         job_dict["Missing_Skills"] = missing
         
