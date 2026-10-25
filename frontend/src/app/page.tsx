@@ -23,6 +23,9 @@ import {
   MapPin,
 } from "lucide-react";
 
+// فارغ ليعمل تلقائياً على نفس دومين Vercel مع فولدر api/index.py
+const API_BASE = "";
+
 type ThemeKey = "blue" | "emerald" | "purple";
 
 interface Job {
@@ -108,13 +111,13 @@ export default function JobMatchPlatform() {
     linkedin: "linkedin.com/in/ahmed-elgiar-49b9a5310",
     summary: "AI and Machine Learning Engineering student with hands-on experience in data analysis, visualization, and predictive modeling.",
     experience: "Digital Egypt Pioneers Initiative (DEPI) - Trainee (2025 - Present)\nNTI Summer Training - AI & ML Intern (2026)",
-    projects: "MyTracker - AI-driven Habit Tracking PWA with FastAPI, React, TypeScript & Tailwind CSS\nAutonomous Maze Bot - BFS Algorithm & Ultrasonic Sensors",
+    projects: "JobMatch AI - Next-Gen Career Platform with React, TypeScript & Tailwind CSS\nAutonomous Maze Bot - BFS Algorithm & Ultrasonic Sensors",
     education: "B.Sc. in AI & Computer Science Engineering, Tanta University",
     skills: "Python, C++, TypeScript, FastAPI, Scikit-learn, PyTorch, TensorFlow, Pandas, SQL, Tailwind CSS",
     languages: "Arabic (Native)\nEnglish (Intermediate)",
   });
 
-// Load Saved Jobs safely
+// Load Saved Jobs safely using useEffect
   useEffect(() => {
     const timer = setTimeout(() => {
       const saved = localStorage.getItem("jobmatch_saved");
@@ -138,30 +141,32 @@ export default function JobMatchPlatform() {
     localStorage.setItem("jobmatch_saved", JSON.stringify(updated));
   };
 
-  // API Handlers
+  // Integrated API Calls (Vercel Serverless Python Backend)
   const handleAnalyzeCV = async () => {
     if (!selectedFile) return;
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      const res = await fetch("/api/analyze", {
+      const res = await fetch(`${API_BASE}/api/analyze`, {
         method: "POST",
         body: formData,
       });
+      if (!res.ok) throw new Error("Failed to analyze CV");
       const data = await res.json();
       setCvData(data);
       if (data) {
         setBuilder((prev) => ({
           ...prev,
           title: data.role || prev.title,
-          email: data.contact_info?.email !== "Not Found" ? data.contact_info?.email : prev.email,
-          phone: data.contact_info?.phone !== "Not Found" ? data.contact_info?.phone : prev.phone,
+          email: data.contact_info?.email && data.contact_info.email !== "Not Found" ? data.contact_info.email : prev.email,
+          phone: data.contact_info?.phone && data.contact_info.phone !== "Not Found" ? data.contact_info.phone : prev.phone,
           skills: data.skills?.length ? data.skills.join(", ") : prev.skills,
         }));
       }
     } catch (err) {
-      alert("حدث خطأ أثناء الاتصال بالـ API");
+      console.error(err);
+      alert("حدث خطأ أثناء تحليل الـ CV. تأكد من تشغيل الباك إند أو رفع المشروع على Vercel.");
     } finally {
       setLoading(false);
     }
@@ -171,13 +176,16 @@ export default function JobMatchPlatform() {
     if (!cvData) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/match-cv-jobs", {
+      const res = await fetch(`${API_BASE}/api/match-cv-jobs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...cvData, country_code: country }),
       });
+      if (!res.ok) throw new Error("Failed to match jobs");
       const data = await res.json();
       setMatchedJobs(data.jobs || []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -187,7 +195,7 @@ export default function JobMatchPlatform() {
     if (!manualSkills.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/manual-recommendations", {
+      const res = await fetch(`${API_BASE}/api/manual-recommendations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -197,8 +205,11 @@ export default function JobMatchPlatform() {
           country_code: country,
         }),
       });
+      if (!res.ok) throw new Error("Failed to fetch recommendations");
       const data = await res.json();
       setMatchedJobs(data.jobs || []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -208,27 +219,36 @@ export default function JobMatchPlatform() {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/live-jobs?query=${encodeURIComponent(searchQuery)}&country=${country}`
+        `${API_BASE}/api/live-jobs?query=${encodeURIComponent(searchQuery)}&country=${encodeURIComponent(country)}`
       );
+      if (!res.ok) throw new Error("Failed to search live jobs");
       const data = await res.json();
       setLiveJobs(data.jobs || []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDownloadCV = async () => {
-    const res = await fetch("/api/build-cv", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(builder),
-    });
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${builder.name.replace(/\s+/g, "_")}_ATS_CV.docx`;
-    a.click();
+    try {
+      const res = await fetch(`${API_BASE}/api/build-cv`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(builder),
+      });
+      if (!res.ok) throw new Error("Failed to generate CV");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${builder.name.replace(/\s+/g, "_")}_ATS_CV.docx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const JobCard = ({ job, showMetrics = true }: { job: Job; showMetrics?: boolean }) => {
@@ -351,7 +371,6 @@ export default function JobMatchPlatform() {
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-slate-200 flex flex-col md:flex-row font-sans">
-      {/* Sidebar */}
       <aside className="w-full md:w-72 bg-[#111522] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0">
         <div>
           <div className="flex items-center gap-3 mb-8">
@@ -411,15 +430,14 @@ export default function JobMatchPlatform() {
           </div>
 
           <div className="text-xs text-slate-500">
-            Vercel Serverless API
+            FastAPI Serverless Engine
             <div className="text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> v5.0.0 Connected
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> v5.0 Integrated
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-6xl mx-auto w-full">
         {activeTab === "Home" && (
           <div className="space-y-8">
@@ -577,7 +595,7 @@ export default function JobMatchPlatform() {
           <div className="space-y-6">
             <div>
               <h2 className="text-3xl font-bold text-white">AI Job Recommendations</h2>
-              <p className="text-slate-400 mt-1">Enter your tech stack manually and let our cosine-similarity engine rank live jobs for you.</p>
+              <p className="text-slate-400 mt-1">Enter your tech stack manually and let our matching engine rank live jobs for you.</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-[#121723] border border-slate-800 space-y-4">

@@ -1,1 +1,6 @@
 __pycache__/ 
+artifacts_v5/ 
+artifacts_v3/ 
+*.pkl 
+node_modules/ 
+.next/ 

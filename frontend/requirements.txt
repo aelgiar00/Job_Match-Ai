@@ -1,6 +1,5 @@
-numpy==1.26.4
-scikit-learn==1.4.1.post1
-pandas==2.2.1
-pypdf==4.1.0
-python-docx==1.1.0
-pydantic==2.6.4
+fastapi
+python-multipart
+pypdf
+python-docx
+requests
