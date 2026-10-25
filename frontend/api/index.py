@@ -105,9 +105,23 @@ def fetch_targeted_jobs(search_query: str, top_skills: list, country: str = "eg"
     jobs = []
     seen_titles = set()
 
-    queries = [search_query]
-    if top_skills:
-        queries.extend(top_skills[:2])
+    sq_lower = search_query.lower()
+    queries = []
+    
+    # 1. التوجيه الذكي للبحث في الـ API بالتخصص فقط (بدون الاعتماد على المهارات الفردية اللي بتلخبط النتايج)
+    if any(x in sq_lower for x in ["ai", "machine", "data", "deep", "nlp", "vision"]):
+        queries = ["AI", "Machine Learning", "Data Scientist", "NLP"]
+    elif any(x in sq_lower for x in ["front", "ui", "ux"]):
+        queries = ["Frontend", "React", "UI"]
+    elif any(x in sq_lower for x in ["back", "api", "node"]):
+        queries = ["Backend", "Backend Developer"]
+    elif any(x in sq_lower for x in ["full", "stack"]):
+        queries = ["Full Stack", "Fullstack"]
+    elif any(x in sq_lower for x in ["cloud", "devops"]):
+        queries = ["DevOps", "Cloud"]
+    else:
+        clean_q = re.sub(r'[^a-zA-Z0-9\s]', ' ', search_query).strip()
+        queries = [clean_q]
 
     for q in set(queries):
         if not q or len(q.strip()) < 2:
@@ -144,7 +158,14 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level, user_role=""):
 
     all_user_skills = {s.lower().strip() for s in user_skills}
     ranked = []
-    user_role_words = set(re.findall(r'\w+', user_role.lower()))
+    
+    user_role_lower = user_role.lower()
+    
+    # تحديد تخصص المستخدم لتطبيق نظام العقاب/المكافأة
+    is_ai = any(x in user_role_lower for x in ["ai", "machine", "data", "nlp", "vision"])
+    is_back = any(x in user_role_lower for x in ["back", "node", "django", "laravel", "api"])
+    is_front = any(x in user_role_lower for x in ["front", "ui", "ux", "react"])
+    is_full = any(x in user_role_lower for x in ["full", "stack"])
 
     for job in jobs:
         title_lower = job["Title"].lower()
@@ -156,14 +177,37 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level, user_role=""):
 
         match_score = 40 + (len(matched_all) * 8)
         
-        title_words = set(re.findall(r'\w+', title_lower))
-        common_words = user_role_words.intersection(title_words)
-        if common_words:
-            match_score += (len(common_words) * 10) 
+        # 2. نظام العقاب والمكافأة الديناميكي بناءً على التخصص
+        if is_ai:
+            if any(x in title_lower for x in ["ai", "machine", "data", "nlp", "vision"]):
+                match_score += 25
+            elif any(x in title_lower for x in ["backend", "full stack", "fullstack", "frontend", "web"]):
+                match_score -= 40 # عقاب قوي للوظائف التي لا تنتمي للمجال
+                
+        elif is_back:
+            if any(x in title_lower for x in ["backend", "back end"]):
+                match_score += 25
+            elif any(x in title_lower for x in ["frontend", "data", "ai", "machine"]):
+                match_score -= 40
+                
+        elif is_front:
+            if any(x in title_lower for x in ["frontend", "front end", "react", "vue"]):
+                match_score += 25
+            elif any(x in title_lower for x in ["backend", "data", "ai"]):
+                match_score -= 40
+                
+        elif is_full:
+            if any(x in title_lower for x in ["full stack", "fullstack"]):
+                match_score += 25
 
-        match_score = min(max(match_score, 45), 98)
-        job_clean = {k: v for k, v in job.items() if k != "Full_Text"}
+        # تحديد الحد الأدنى والأقصى للسكور
+        match_score = min(max(match_score, 10), 98)
         
+        # طرد الوظائف التي قل السكور الخاص بها عن 40 بسبب نظام العقاب
+        if match_score < 40:
+            continue
+
+        job_clean = {k: v for k, v in job.items() if k != "Full_Text"}
         ranked.append({
             **job_clean,
             "Match_Score": int(match_score),
@@ -174,6 +218,7 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level, user_role=""):
             "Missing_Skills": missing,
         })
 
+    # ترتيب الوظائف تنازلياً حسب أعلى مطابقة
     ranked = sorted(ranked, key=lambda x: x["Match_Score"], reverse=True)
     return ranked[:6]
 
