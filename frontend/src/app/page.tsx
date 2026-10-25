@@ -15,8 +15,6 @@ import {
   ExternalLink,
   Mail,
   Phone,
-  Award,
-  TrendingUp,
   Layers,
   Palette,
   Download,
@@ -25,9 +23,32 @@ import {
   MapPin,
 } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8000";
-
 type ThemeKey = "blue" | "emerald" | "purple";
+
+interface Job {
+  Title: string;
+  Company: string;
+  Location: string;
+  Description: string;
+  Match_Score?: number;
+  Skill_Pct?: number;
+  Exp_Pct?: number;
+  Level_Pct?: number;
+  Matched_Skills?: string[];
+  Missing_Skills?: string[];
+  Apply_Link?: string;
+}
+
+interface CVData {
+  role?: string;
+  skills?: string[];
+  experience_level?: number;
+  career_level?: string;
+  contact_info?: {
+    email?: string;
+    phone?: string;
+  };
+}
 
 const THEMES: Record<ThemeKey, { name: string; primary: string; badge: string; border: string; glow: string }> = {
   blue: {
@@ -59,13 +80,13 @@ export default function JobMatchPlatform() {
   const currentTheme = THEMES[theme];
 
   // States
-  const [cvData, setCvData] = useState<any>(null);
+  const [cvData, setCvData] = useState<CVData | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [country, setCountry] = useState("eg");
   const [loading, setLoading] = useState(false);
-  const [matchedJobs, setMatchedJobs] = useState<any[]>([]);
-  const [liveJobs, setLiveJobs] = useState<any[]>([]);
-  const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  const [matchedJobs, setMatchedJobs] = useState<Job[]>([]);
+  const [liveJobs, setLiveJobs] = useState<Job[]>([]);
+  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
 
   // Manual Match States
   const [manualSkills, setManualSkills] = useState("");
@@ -93,13 +114,22 @@ export default function JobMatchPlatform() {
     languages: "Arabic (Native)\nEnglish (Intermediate)",
   });
 
-  // Load Saved Jobs from LocalStorage
+// Load Saved Jobs safely
   useEffect(() => {
-    const saved = localStorage.getItem("jobmatch_saved");
-    if (saved) setSavedJobs(JSON.parse(saved));
+    const timer = setTimeout(() => {
+      const saved = localStorage.getItem("jobmatch_saved");
+      if (saved) {
+        try {
+          setSavedJobs(JSON.parse(saved));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
-  const toggleSaveJob = (job: any) => {
+  const toggleSaveJob = (job: Job) => {
     const exists = savedJobs.some((j) => j.Title === job.Title && j.Company === job.Company);
     const updated = exists
       ? savedJobs.filter((j) => !(j.Title === job.Title && j.Company === job.Company))
@@ -108,20 +138,19 @@ export default function JobMatchPlatform() {
     localStorage.setItem("jobmatch_saved", JSON.stringify(updated));
   };
 
-  // Handlers
+  // API Handlers
   const handleAnalyzeCV = async () => {
     if (!selectedFile) return;
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      const res = await fetch(`${API_BASE}/api/analyze-cv`, {
+      const res = await fetch("/api/analyze", {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
       setCvData(data);
-      // Update CV Builder automatically from extracted CV
       if (data) {
         setBuilder((prev) => ({
           ...prev,
@@ -132,7 +161,7 @@ export default function JobMatchPlatform() {
         }));
       }
     } catch (err) {
-      alert("تأكد أن سيرفر الـ FastAPI شغال على بورت 8000");
+      alert("حدث خطأ أثناء الاتصال بالـ API");
     } finally {
       setLoading(false);
     }
@@ -142,7 +171,7 @@ export default function JobMatchPlatform() {
     if (!cvData) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/match-cv-jobs`, {
+      const res = await fetch("/api/match-cv-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...cvData, country_code: country }),
@@ -158,7 +187,7 @@ export default function JobMatchPlatform() {
     if (!manualSkills.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/manual-recommendations`, {
+      const res = await fetch("/api/manual-recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -179,7 +208,7 @@ export default function JobMatchPlatform() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${API_BASE}/api/live-jobs?query=${encodeURIComponent(searchQuery)}&country=${country}`
+        `/api/live-jobs?query=${encodeURIComponent(searchQuery)}&country=${country}`
       );
       const data = await res.json();
       setLiveJobs(data.jobs || []);
@@ -189,7 +218,7 @@ export default function JobMatchPlatform() {
   };
 
   const handleDownloadCV = async () => {
-    const res = await fetch(`${API_BASE}/api/build-cv`, {
+    const res = await fetch("/api/build-cv", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(builder),
@@ -202,7 +231,7 @@ export default function JobMatchPlatform() {
     a.click();
   };
 
-  const JobCard = ({ job, showMetrics = true }: { job: any; showMetrics?: boolean }) => {
+  const JobCard = ({ job, showMetrics = true }: { job: Job; showMetrics?: boolean }) => {
     const isSaved = savedJobs.some((j) => j.Title === job.Title && j.Company === job.Company);
     return (
       <div className="bg-[#121723] border border-slate-800/80 hover:border-slate-700 rounded-2xl p-6 mb-5 transition-all duration-300 shadow-lg hover:shadow-xl">
@@ -267,7 +296,7 @@ export default function JobMatchPlatform() {
           {job.Description}
         </p>
 
-        {showMetrics && (job.Matched_Skills?.length > 0 || job.Missing_Skills?.length > 0) && (
+        {showMetrics && (job.Matched_Skills?.length || job.Missing_Skills?.length) ? (
           <div className="mb-5 space-y-2">
             <div className="flex flex-wrap gap-2">
               {job.Matched_Skills?.slice(0, 8).map((s: string) => (
@@ -282,7 +311,7 @@ export default function JobMatchPlatform() {
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
         <div className="flex items-center gap-3 pt-3 border-t border-slate-800/80">
           {job.Apply_Link && job.Apply_Link !== "#" && (
@@ -325,7 +354,6 @@ export default function JobMatchPlatform() {
       {/* Sidebar */}
       <aside className="w-full md:w-72 bg-[#111522] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0">
         <div>
-          {/* Brand Logo */}
           <div className="flex items-center gap-3 mb-8">
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center shadow-lg`}>
               <Briefcase className="w-5 h-5 text-white" />
@@ -338,7 +366,6 @@ export default function JobMatchPlatform() {
             </div>
           </div>
 
-          {/* Navigation */}
           <nav className="space-y-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -361,7 +388,6 @@ export default function JobMatchPlatform() {
           </nav>
         </div>
 
-        {/* Theme Switcher & Status */}
         <div className="mt-8 pt-6 border-t border-slate-800/80 space-y-4">
           <div>
             <span className="text-xs text-slate-400 flex items-center gap-1.5 mb-2">
@@ -385,7 +411,7 @@ export default function JobMatchPlatform() {
           </div>
 
           <div className="text-xs text-slate-500">
-            FastAPI Engine
+            Vercel Serverless API
             <div className="text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> v5.0.0 Connected
             </div>
@@ -395,7 +421,6 @@ export default function JobMatchPlatform() {
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-6xl mx-auto w-full">
-        {/* HOME TAB */}
         {activeTab === "Home" && (
           <div className="space-y-8">
             <div className="p-8 rounded-3xl bg-gradient-to-br from-slate-900 via-[#13192b] to-slate-900 border border-slate-800/80 shadow-2xl">
@@ -441,7 +466,6 @@ export default function JobMatchPlatform() {
           </div>
         )}
 
-        {/* CV ANALYZER TAB */}
         {activeTab === "CV Analyzer" && (
           <div className="space-y-6">
             <div>
@@ -483,7 +507,6 @@ export default function JobMatchPlatform() {
 
             {cvData && (
               <div className="space-y-6 animate-fadeIn">
-                {/* Contact & Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="p-5 rounded-2xl bg-[#121723] border border-slate-800">
                     <span className="text-xs text-slate-400 uppercase">Predicted Role</span>
@@ -503,7 +526,6 @@ export default function JobMatchPlatform() {
                   </div>
                 </div>
 
-                {/* Contact Banner */}
                 <div className="p-5 rounded-2xl bg-[#121723] border border-slate-800 flex flex-wrap gap-6 items-center">
                   <div className="flex items-center gap-2 text-sm text-slate-300">
                     <Mail className="w-4 h-4 text-sky-400" /> {cvData.contact_info?.email}
@@ -513,7 +535,6 @@ export default function JobMatchPlatform() {
                   </div>
                 </div>
 
-                {/* Extracted Skills */}
                 <div className="p-6 rounded-2xl bg-[#121723] border border-slate-800">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
                     Extracted Technical Skills
@@ -552,7 +573,6 @@ export default function JobMatchPlatform() {
           </div>
         )}
 
-        {/* MANUAL AI RECOMMENDATIONS TAB */}
         {activeTab === "AI Recommendations" && (
           <div className="space-y-6">
             <div>
@@ -621,7 +641,6 @@ export default function JobMatchPlatform() {
           </div>
         )}
 
-        {/* LIVE JOBS TAB */}
         {activeTab === "Live Jobs" && (
           <div className="space-y-6">
             <div>
@@ -653,7 +672,6 @@ export default function JobMatchPlatform() {
           </div>
         )}
 
-        {/* SAVED JOBS TAB */}
         {activeTab === "Saved Jobs" && (
           <div className="space-y-6">
             <h2 className="text-3xl font-bold text-white">Saved Jobs ({savedJobs.length})</h2>
@@ -667,7 +685,6 @@ export default function JobMatchPlatform() {
           </div>
         )}
 
-        {/* ATS CV BUILDER TAB */}
         {activeTab === "CV Builder" && (
           <div className="space-y-6">
             <div className="flex flex-wrap justify-between items-center gap-4">
@@ -684,7 +701,6 @@ export default function JobMatchPlatform() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Form */}
               <div className="bg-[#121723] p-6 rounded-2xl border border-slate-800 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -737,7 +753,6 @@ export default function JobMatchPlatform() {
                 ))}
               </div>
 
-              {/* Live Paper Preview */}
               <div className="bg-white text-slate-900 p-8 rounded-xl shadow-2xl min-h-[750px] font-sans">
                 <div className="text-center border-b border-slate-300 pb-4">
                   <h1 className="text-2xl font-bold uppercase tracking-wide">{builder.name}</h1>
@@ -785,7 +800,6 @@ export default function JobMatchPlatform() {
           </div>
         )}
 
-        {/* DOMAIN AI TAB */}
         {activeTab === "Domain AI" && (
           <div className="space-y-6">
             <h2 className="text-3xl font-bold text-white">Domain Intelligence</h2>
