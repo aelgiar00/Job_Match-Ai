@@ -3,7 +3,7 @@ import requests
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pypdf import PdfReader
+import pdfplumber  # تم التعديل هنا: استخدام pdfplumber بدلاً من pypdf
 import docx
 
 app = FastAPI()
@@ -36,17 +36,30 @@ def skill_regex(skill: str) -> str:
 def extract_text(file_bytes: bytes, filename: str) -> str:
     text = ""
     fname = filename.lower()
+    
+    # تم التحديث: استخدام pdfplumber لتخطي مشاكل التصميم المعقد
     if fname.endswith(".pdf"):
-        reader = PdfReader(io.BytesIO(file_bytes))
-        for page in reader.pages:
-            t = page.extract_text()
-            if t: text += t + "\n"
+        try:
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                for page in pdf.pages:
+                    # استخدام x_tolerance و y_tolerance لضبط قراءة العواميد
+                    extracted = page.extract_text(x_tolerance=2, y_tolerance=3)
+                    if extracted: 
+                        text += extracted + "\n"
+        except Exception as e:
+            print(f"Error parsing PDF: {e}")
+            
     elif fname.endswith(".docx"):
-        doc = docx.Document(io.BytesIO(file_bytes))
-        for p in doc.paragraphs:
-            text += p.text + "\n"
+        try:
+            doc = docx.Document(io.BytesIO(file_bytes))
+            for p in doc.paragraphs:
+                text += p.text + "\n"
+        except Exception as e:
+            print(f"Error parsing DOCX: {e}")
+            
     else:
         text = file_bytes.decode("utf-8", errors="ignore")
+        
     return text
 
 def clean_and_extract_skills(raw_text: str):
@@ -95,8 +108,7 @@ def clean_and_extract_skills(raw_text: str):
 def fetch_targeted_jobs(search_query: str, top_skills: list, country: str = "eg"):
     jobs = []
     seen_titles = set()
-    
-    # استخدام المدخلات الحقيقية للمستخدم ككلمات بحث أساسية
+
     queries = [search_query]
     if top_skills:
         queries.extend(top_skills[:3])
@@ -114,7 +126,7 @@ def fetch_targeted_jobs(search_query: str, top_skills: list, country: str = "eg"
                     title_low = title.lower()
                     if any(bad in title_low for bad in excluded_title_words):
                         continue
-                    
+
                     comp = item.get("company_name", "Tech Corp")
                     key = f"{title}_{comp}".lower()
                     if key in seen_titles:
@@ -141,16 +153,16 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level):
 
     all_user_skills = {s.lower().strip() for s in user_skills}
     ranked = []
-    
+
     for job in jobs:
         desc_lower = job.get("Full_Text", (job["Title"] + " " + job["Description"]).lower())
         job_skills = {s for s in VOCAB.keys() if s not in NOISY_SKILLS and re.search(skill_regex(s), desc_lower)}
-        
+
         matched_all = sorted([s for s in job_skills if s in all_user_skills])
         missing = sorted(list(job_skills - all_user_skills))[:5]
 
         match_score = min(max(55 + (len(matched_all) * 7), 60), 98)
-        
+
         job_clean = {k: v for k, v in job.items() if k != "Full_Text"}
         ranked.append({
             **job_clean,
@@ -205,7 +217,7 @@ async def manual_recs(payload: dict):
     exp = payload.get("experience_years", 2)
     level = payload.get("career_level", "Entry Level")
     country = payload.get("country_code", "eg")
-    
+
     query = skills[0] if skills else "Developer"
     jobs = fetch_targeted_jobs(query, skills, country)
     return {"jobs": rank_and_filter_jobs(jobs, skills, exp, level)}
