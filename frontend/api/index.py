@@ -2,7 +2,7 @@ import os, io, re, json
 import requests
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-import pdfplumber
+from pypdf import PdfReader
 import docx
 
 app = FastAPI()
@@ -35,15 +35,16 @@ def skill_regex(skill: str) -> str:
 def extract_text(file_bytes: bytes, filename: str) -> str:
     text = ""
     fname = filename.lower()
+    
     if fname.endswith(".pdf"):
         try:
-            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-                for page in pdf.pages:
-                    extracted = page.extract_text(x_tolerance=2, y_tolerance=3)
-                    if extracted: 
-                        text += extracted + "\n"
+            reader = PdfReader(io.BytesIO(file_bytes))
+            for page in reader.pages:
+                t = page.extract_text()
+                if t: text += t + "\n"
         except Exception as e:
             print(f"Error parsing PDF: {e}")
+            
     elif fname.endswith(".docx"):
         try:
             doc = docx.Document(io.BytesIO(file_bytes))
@@ -51,8 +52,10 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
                 text += p.text + "\n"
         except Exception as e:
             print(f"Error parsing DOCX: {e}")
+            
     else:
         text = file_bytes.decode("utf-8", errors="ignore")
+        
     return text
 
 def clean_and_extract_skills(raw_text: str):
@@ -102,7 +105,6 @@ def fetch_targeted_jobs(search_query: str, top_skills: list, country: str = "eg"
     jobs = []
     seen_titles = set()
 
-    # الاعتماد الديناميكي على ما يستخرجه الموديل بدون أي حظر مسبق
     queries = [search_query]
     if top_skills:
         queries.extend(top_skills[:2])
@@ -142,31 +144,26 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level, user_role=""):
 
     all_user_skills = {s.lower().strip() for s in user_skills}
     ranked = []
-    
-    # استخراج الكلمات الأساسية من الدور الذي توقعه الموديل
     user_role_words = set(re.findall(r'\w+', user_role.lower()))
 
     for job in jobs:
         title_lower = job["Title"].lower()
         desc_lower = job.get("Full_Text", (title_lower + " " + job["Description"]).lower())
         
-        # استخراج المهارات من الوظيفة لمطابقتها مع مهارات المستخدم
         job_skills = {s for s in VOCAB.keys() if s not in NOISY_SKILLS and re.search(skill_regex(s), desc_lower)}
         matched_all = sorted([s for s in job_skills if s in all_user_skills])
         missing = sorted(list(job_skills - all_user_skills))[:5]
 
-        # 1. نقاط الأساس تعتمد على عدد المهارات المتطابقة
         match_score = 40 + (len(matched_all) * 8)
         
-        # 2. مكافأة ديناميكية: إذا كانت كلمات الدور المتوقع موجودة في عنوان الوظيفة
         title_words = set(re.findall(r'\w+', title_lower))
         common_words = user_role_words.intersection(title_words)
         if common_words:
             match_score += (len(common_words) * 10) 
 
         match_score = min(max(match_score, 45), 98)
-
         job_clean = {k: v for k, v in job.items() if k != "Full_Text"}
+        
         ranked.append({
             **job_clean,
             "Match_Score": int(match_score),
@@ -177,7 +174,6 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level, user_role=""):
             "Missing_Skills": missing,
         })
 
-    # ترتيب الوظائف تنازلياً حسب أعلى مطابقة
     ranked = sorted(ranked, key=lambda x: x["Match_Score"], reverse=True)
     return ranked[:6]
 
