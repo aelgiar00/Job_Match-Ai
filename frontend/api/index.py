@@ -31,65 +31,61 @@ INTERCEPTS = MODEL_DATA["intercepts"]
 
 NOISY_SKILLS = {"c", "english", "communication", "problem solving", "computer engineering", "marketing", "sales"}
 
-# عائلات التخصصات لضمان مطابقة عنوان الوظيفة مع تخصص الـ CV بنسبة 100%
-ROLE_FAMILIES = {
+# قواعد صارمة باستخدام Regex للكلمات الكاملة لمنع التداخل النصي وحظر وظائف Annotation/Trainer
+ROLE_RULES = {
     "ai_data": {
-        "triggers": ["ai", "machine learning", "data", "deep learning", "nlp", "computer vision", "artificial intelligence", "ml"],
-        "valid_titles": ["ai", "machine learning", "ml", "data", "nlp", "vision", "deep learning", "research", "python", "scientist", "analytics", "analyst", "llm", "genai"],
-        "banned_titles": ["frontend", "front-end", "front end", "react", "angular", "vue", "rails", "ruby", "php", "laravel", "wordpress", "ios", "android", "flutter", "full stack", "fullstack", "full-stack", "back-end", "backend", "back end", "ui/ux", "sales", "marketing", "recruiter", "hr", "customer", "support", "accountant", ".net", "c#", "java "]
+        "triggers": [r"\bai\b", r"machine learning", r"\bml\b", r"data scien", r"deep learning", r"\bnlp\b", r"computer vision", r"artificial intelligence", r"data analy"],
+        "valid_title_regex": r"\b(ai|ml|machine learning|data scientist|data science|data analyst|data engineer|deep learning|nlp|computer vision|artificial intelligence|llm|genai|mlops|python engineer)\b",
+        "banned_title_regex": r"\b(trainer|annotation|annotator|rater|labeler|coding tasks|prompt writer|tutor|frontend|front-end|react|angular|vue|rails|ruby|php|laravel|wordpress|ios|android|flutter|full stack|fullstack|full-stack|back-end|backend|ui/ux|sales|marketing|recruiter|hr|support|accountant|\.net|c#)\b"
     },
     "frontend": {
-        "triggers": ["frontend", "front-end", "react", "angular", "vue", "ui"],
-        "valid_titles": ["frontend", "front-end", "front end", "react", "angular", "vue", "javascript", "typescript", "ui", "web"],
-        "banned_titles": ["backend", "back-end", "data scientist", "machine learning", "ai ", "devops", "security", "ios", "android"]
+        "triggers": [r"frontend", r"front-end", r"\breact\b", r"\bangular\b", r"\bvue\b"],
+        "valid_title_regex": r"\b(frontend|front-end|front end|react|angular|vue|ui developer|web developer|javascript|typescript)\b",
+        "banned_title_regex": r"\b(trainer|annotation|backend|back-end|data scientist|machine learning|devops|security|ios|android|sales|hr)\b"
     },
     "backend": {
-        "triggers": ["backend", "back-end", "node", "django", "spring", "laravel", "php"],
-        "valid_titles": ["backend", "back-end", "back end", "node", "python", "java", "golang", "go ", "php", "laravel", "django", "api", "software engineer"],
-        "banned_titles": ["frontend", "front-end", "react", "ui/ux", "data analyst", "recruiter", "sales"]
+        "triggers": [r"backend", r"back-end", r"\bnode\b", r"\bdjango\b", r"\bfastapi\b", r"\bspring\b", r"\blaravel\b"],
+        "valid_title_regex": r"\b(backend|back-end|back end|python developer|node|golang|java developer|api|django|fastapi|software engineer)\b",
+        "banned_title_regex": r"\b(trainer|annotation|coding tasks|frontend|front-end|react|ui/ux|data analyst|recruiter|sales)\b"
     },
     "fullstack": {
-        "triggers": ["full stack", "fullstack", "full-stack"],
-        "valid_titles": ["full stack", "fullstack", "full-stack", "software engineer", "web developer", "react", "node"],
-        "banned_titles": ["data analyst", "recruiter", "sales", "marketing", "support", "hr"]
+        "triggers": [r"full stack", r"fullstack", r"full-stack"],
+        "valid_title_regex": r"\b(full stack|fullstack|full-stack|software engineer|web developer)\b",
+        "banned_title_regex": r"\b(trainer|annotation|coding tasks|data analyst|recruiter|sales|marketing|support|hr)\b"
     },
     "devops_cloud": {
-        "triggers": ["devops", "cloud", "sre", "aws", "kubernetes", "infrastructure"],
-        "valid_titles": ["devops", "cloud", "sre", "reliability", "infrastructure", "platform", "aws", "kubernetes", "docker", "system"],
-        "banned_titles": ["frontend", "react", "ui/ux", "sales", "marketing"]
+        "triggers": [r"devops", r"\bcloud\b", r"\bsre\b", r"\bkubernetes\b"],
+        "valid_title_regex": r"\b(devops|cloud|sre|reliability|infrastructure|platform engineer|aws|kubernetes)\b",
+        "banned_title_regex": r"\b(trainer|annotation|frontend|react|ui/ux|sales|marketing)\b"
     },
     "cybersecurity": {
-        "triggers": ["security", "cyber", "penetration", "soc", "infosec"],
-        "valid_titles": ["security", "cyber", "soc", "penetration", "pentest", "infosec", "vulnerability", "network"],
-        "banned_titles": ["frontend", "react", "sales", "marketing"]
-    },
-    "mobile": {
-        "triggers": ["mobile", "android", "ios", "flutter", "react native"],
-        "valid_titles": ["mobile", "android", "ios", "flutter", "react native", "swift", "kotlin"],
-        "banned_titles": ["frontend", "backend", "data", "devops"]
+        "triggers": [r"security", r"cyber", r"penetration", r"\bsoc\b", r"infosec"],
+        "valid_title_regex": r"\b(security|cyber|cybersecurity|soc|penetration|pentest|infosec)\b",
+        "banned_title_regex": r"\b(trainer|annotation|frontend|react|sales|marketing)\b"
     }
 }
 
 def detect_family(role_or_query: str, skills: list) -> str:
-    combined = (role_or_query + " " + " ".join(skills[:10])).lower()
-    for fam_key, fam_data in ROLE_FAMILIES.items():
-        if any(trig in combined for trig in fam_data["triggers"]):
+    combined = (role_or_query + " " + " ".join(skills[:8])).lower()
+    for fam_key, fam_data in ROLE_RULES.items():
+        if any(re.search(trig, combined) for trig in fam_data["triggers"]):
             return fam_key
     return "general"
 
-def is_title_valid_for_family(title: str, family: str) -> bool:
+def is_title_valid(title: str, family: str) -> bool:
     t_low = title.lower()
-    if family not in ROLE_FAMILIES:
-        # فلتر عام ضد الوظائف غير التقنية
-        general_banned = ["sales", "marketing", "recruiter", "hr", "customer support", "accountant", "copywriter"]
-        return not any(b in t_low for b in general_banned)
-    
-    fam = ROLE_FAMILIES[family]
-    # 1. استبعاد فوري إذا كان العنوان يحتوي على كلمة محظورة لهذا التخصص
-    if any(bad in t_low for bad in fam["banned_titles"]):
+    # حظر عام لوظائف التدريب الوهمية وغير التقنية في جميع التخصصات
+    global_ban = r"\b(trainer|annotation|annotator|rater|labeler|coding tasks|tutor|sales|recruiter|hr|customer support|accountant)\b"
+    if re.search(global_ban, t_low):
         return False
-    # 2. يجب أن يحتوي العنوان على كلمة واحدة على الأقل تدل على التخصص
-    if any(valid in t_low for valid in fam["valid_titles"]):
+
+    if family not in ROLE_RULES:
+        return True
+
+    rules = ROLE_RULES[family]
+    if re.search(rules["banned_title_regex"], t_low):
+        return False
+    if re.search(rules["valid_title_regex"], t_low):
         return True
     return False
 
@@ -165,57 +161,62 @@ def clean_and_extract_skills(raw_text: str):
 def fetch_targeted_jobs(search_query: str, top_skills: list, country: str = "eg", strict_family: str = None):
     jobs = []
     seen_titles = set()
-
     family = strict_family or detect_family(search_query, top_skills)
 
-    # تحديد كلمات بحث دقيقة جداً للـ API حسب عائلة التخصص
-    if family == "ai_data":
-        queries = ["machine learning", "artificial intelligence", "data scientist", "data analyst", "nlp", "computer vision", "ai engineer"]
-    elif family == "frontend":
-        queries = ["frontend", "react developer", "front-end"]
-    elif family == "backend":
-        queries = ["backend", "python developer", "nodejs"]
-    elif family == "fullstack":
-        queries = ["full stack", "fullstack"]
-    elif family == "devops_cloud":
-        queries = ["devops", "cloud engineer", "sre"]
-    elif family == "cybersecurity":
-        queries = ["cybersecurity", "security engineer", "soc"]
-    elif family == "mobile":
-        queries = ["mobile developer", "flutter", "ios", "android"]
-    else:
-        queries = [search_query] + top_skills[:2]
+    def add_job_if_valid(title, comp, loc, raw_desc, url):
+        if not title or not is_title_valid(title, family):
+            return
+        key = f"{title}_{comp}".lower()
+        if key in seen_titles:
+            return
+        seen_titles.add(key)
+        clean_desc = re.sub(r'<[^>]+>', ' ', raw_desc or "")
+        clean_desc = re.sub(r'\s+', ' ', clean_desc).strip()
+        jobs.append({
+            "Title": title,
+            "Company": comp or "Tech Company",
+            "Location": loc or "Remote",
+            "Description": clean_desc[:420] + "...",
+            "Full_Text": (title + " " + clean_desc).lower(),
+            "Apply_Link": url or "#"
+        })
 
-    for q in queries:
-        if not q or len(q.strip()) < 2:
-            continue
+    # المصدر الأول: قنوات Remotive الكاملة (بدون search ضيق يضيع الوظائف)
+    remotive_urls = [
+        "https://remotive.com/api/remote-jobs?category=data&limit=100",
+        "https://remotive.com/api/remote-jobs?category=software-dev&limit=100",
+        f"https://remotive.com/api/remote-jobs?search={search_query}&limit=50"
+    ]
+    for url in remotive_urls:
         try:
-            r = requests.get(f"https://remotive.com/api/remote-jobs?search={q.strip()}&limit=35", timeout=7)
+            r = requests.get(url, timeout=6)
             if r.status_code == 200:
                 for item in r.json().get("jobs", []):
-                    title = item.get("title", "")
-                    
-                    # تطبيق الفلتر الصارم على عنوان الوظيفة
-                    if not is_title_valid_for_family(title, family):
-                        continue
-
-                    comp = item.get("company_name", "Tech Corp")
-                    key = f"{title}_{comp}".lower()
-                    if key in seen_titles:
-                        continue
-                    seen_titles.add(key)
-
-                    desc = re.sub(r'<[^>]+>', ' ', item.get("description", ""))
-                    jobs.append({
-                        "Title": title,
-                        "Company": comp,
-                        "Location": item.get("candidate_required_location", country.upper()),
-                        "Description": re.sub(r'\s+', ' ', desc).strip()[:420] + "...",
-                        "Full_Text": (title + " " + desc).lower(),
-                        "Apply_Link": item.get("url", "#")
-                    })
+                    add_job_if_valid(
+                        item.get("title", ""),
+                        item.get("company_name", ""),
+                        item.get("candidate_required_location", "Remote"),
+                        item.get("description", ""),
+                        item.get("url", "#")
+                    )
         except Exception:
             pass
+
+    # المصدر الثاني: Arbeitnow Job Board API (مصدر مجاني غني بوظائف AI و Software)
+    try:
+        r2 = requests.get("https://www.arbeitnow.com/api/job-board-api", timeout=6)
+        if r2.status_code == 200:
+            for item in r2.json().get("data", []):
+                tags_str = " ".join(item.get("tags", []))
+                add_job_if_valid(
+                    item.get("title", ""),
+                    item.get("company_name", ""),
+                    item.get("location", "Remote"),
+                    item.get("description", "") + " " + tags_str,
+                    item.get("url", "#")
+                )
+    except Exception:
+        pass
 
     return jobs
 
@@ -231,61 +232,52 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level, user_role=""):
         title_lower = job["Title"].lower()
         desc_lower = job.get("Full_Text", (title_lower + " " + job["Description"]).lower())
 
-        # التأكد مرة ثانية من صلاحية العنوان
-        if not is_title_valid_for_family(title_lower, family):
+        if not is_title_valid(title_lower, family):
             continue
 
         job_skills = {s for s in VOCAB.keys() if s not in NOISY_SKILLS and re.search(skill_regex(s), desc_lower)}
         matched_all = sorted([s for s in job_skills if s in all_user_skills])
         missing = sorted(list(job_skills - all_user_skills))[:6]
 
-        # 1. حساب حقيقي لنسبة المهارات (Skill_Pct)
-        total_job_skills = max(len(job_skills), 1)
-        raw_skill_ratio = len(matched_all) / min(total_job_skills, 10)
-        skill_pct = int(min(max(raw_skill_ratio * 100, 35), 98))
-        
-        # مكافأة إذا كان عنوان الوظيفة يطابق التخصص بدقة
-        if family in ROLE_FAMILIES and any(v in title_lower for v in ROLE_FAMILIES[family]["valid_titles"][:6]):
-            skill_pct = min(skill_pct + 12, 98)
+        # استبعاد الوظائف التي لا تتقاطع مع مهارات المستخدم على الإطلاق (عند توفر مهارات)
+        if user_skills and len(matched_all) == 0:
+            continue
 
-        # 2. حساب حقيقي لنسبة المستوى الوظيفي (Level_Pct) بناءً على العنوان
-        is_job_senior = any(w in title_lower for w in ["senior", "sr.", "sr ", "lead", "principal", "staff", "head", "director", "manager"])
+        # 1. حساب دقيق لنسبة المهارات (المقام لا يقل عن 5 مهارات لمنع 1/1 = 100%)
+        denom = max(min(len(job_skills), 8), 5)
+        skill_pct = int(min((len(matched_all) / denom) * 100, 96))
+        
+        # مكافأة إذا كان العنوان يحتوي على المسمى الصريح للتخصص (مثل Machine Learning أو AI Engineer)
+        if re.search(r"\b(machine learning|ai engineer|data scientist|deep learning|computer vision|nlp)\b", title_lower):
+            skill_pct = min(skill_pct + 15, 98)
+
+        skill_pct = max(skill_pct, 45)
+
+        # 2. حساب نسبة المستوى الوظيفي (Level_Pct)
+        is_job_senior = any(w in title_lower for w in ["senior", "sr.", "sr ", "lead", "principal", "staff", "head", "director"])
         is_job_junior = any(w in title_lower for w in ["junior", "jr.", "jr ", "entry", "intern", "graduate", "associate"])
 
         u_lvl = user_level.lower()
         if "student" in u_lvl or "entry" in u_lvl:
-            if is_job_junior:
-                level_pct = 96
-            elif is_job_senior:
-                level_pct = 55  # تقليل النسبة لأن الوظيفة Senior والمستخدم Entry Level
-            else:
-                level_pct = 84
+            level_pct = 96 if is_job_junior else (60 if is_job_senior else 85)
         elif "experienced" in u_lvl or "mid" in u_lvl:
-            if is_job_senior:
-                level_pct = 86
-            elif is_job_junior:
-                level_pct = 75
-            else:
-                level_pct = 94
+            level_pct = 88 if is_job_senior else (76 if is_job_junior else 94)
         else:
-            level_pct = 92 if is_job_senior else 78
+            level_pct = 94 if is_job_senior else 78
 
-        # 3. حساب حقيقي لنسبة الخبرة (Exp_Pct) بناءً على السنوات المطلوبة في الوصف
+        # 3. حساب نسبة الخبرة (Exp_Pct)
         req_exp_matches = re.findall(r'(\d+)\+?\s*(?:years?|yrs?)', desc_lower)
         req_years = [int(x) for x in req_exp_matches if 1 <= int(x) <= 15]
         if req_years:
             job_req_exp = min(req_years)
             diff = float(user_exp) - job_req_exp
-            if diff >= 0:
-                exp_pct = 95
-            else:
-                exp_pct = int(max(95 - (abs(diff) * 10), 50))
+            exp_pct = 95 if diff >= 0 else int(max(92 - (abs(diff) * 9), 55))
         else:
-            exp_pct = 88 if not is_job_senior else (65 if float(user_exp) < 3 else 92)
+            exp_pct = 88 if not is_job_senior else (68 if float(user_exp) < 3 else 92)
 
-        # 4. الحساب النهائي الموزون لـ Match_Score
-        match_score = int((skill_pct * 0.55) + (exp_pct * 0.25) + (level_pct * 0.20))
-        match_score = min(max(match_score, 45), 98)
+        # 4. الدرجة الكلية الموزونة
+        match_score = int((skill_pct * 0.60) + (exp_pct * 0.20) + (level_pct * 0.20))
+        match_score = min(max(match_score, 50), 98)
 
         job_clean = {k: v for k, v in job.items() if k != "Full_Text"}
         ranked.append({
@@ -298,7 +290,7 @@ def rank_and_filter_jobs(jobs, user_skills, user_exp, user_level, user_role=""):
             "Missing_Skills": missing,
         })
 
-    ranked = sorted(ranked, key=lambda x: x["Match_Score"], reverse=True)
+    ranked = sorted(ranked, key=lambda x: (x["Match_Score"], len(x["Matched_Skills"])), reverse=True)
     return ranked[:10]
 
 @app.post("/api/analyze")
@@ -345,7 +337,7 @@ async def manual_recs(payload: dict):
     country = payload.get("country_code", "eg")
 
     family = detect_family(skills_str, skills)
-    query = skills[0] if skills else "Developer"
+    query = skills[0] if skills else "AI Engineer"
     jobs = fetch_targeted_jobs(query, skills, country, strict_family=family)
     return {"jobs": rank_and_filter_jobs(jobs, skills, exp, level, skills_str)}
 
