@@ -148,21 +148,21 @@ def extract_experience_and_level(raw_text: str):
     return exp_years, level
 
 def is_seniority_compatible(job_title: str, job_desc: str, user_level: str, user_exp: float) -> bool:
-    """نظام مرن يتوافق مع مستوى المستخدم الحقيقي (Junior يرى Junior/Mid - Senior يرى Senior/Mid)"""
+    """محرك أقدمية ثنائي الاتجاه صارم (يحمي الجونيور من السينيور، ويحمي السينيور من الجونيور)"""
     t_low = job_title.lower()
     u_lvl = user_level.lower()
     
     is_job_senior = bool(re.search(SENIOR_TITLE_REGEX, t_low))
     is_job_junior = bool(re.search(JUNIOR_TITLE_REGEX, t_low))
     
-    # 1. إذا كان المستخدم Junior أو Student: نستبعد فقط الوظائف القيادية الكبرى (Lead, Principal, Director)
+    # 1. إذا كان المستخدم Junior أو Student أو Entry Level: حظر تام لوظائف Senior و Lead و Principal والمناصب القيادية
     if any(k in u_lvl for k in ["student", "entry", "junior", "fresh"]) or float(user_exp) <= 2.5:
-        if any(w in t_low for w in ["lead", "principal", "staff", "head", "director", "manager", "architect"]):
+        if is_job_senior or any(w in t_low for w in ["lead", "principal", "staff", "head", "director", "manager", "architect", "vp"]):
             return False
             
-    # 2. إذا كان المستخدم Senior: نستبعد وظائف التدريب والـ Intern والـ Junior البحتة
+    # 2. إذا كان المستخدم Senior (خبرة 5 سنوات فأكثر): حظر تام لوظائف Junior و Entry-level و Intern و Trainee
     elif "senior" in u_lvl or float(user_exp) >= 5.0:
-        if is_job_junior or re.search(r"\b(intern|internship|trainee|fresh graduate)\b", t_low):
+        if is_job_junior or re.search(r"\b(intern|internship|trainee|fresh graduate|entry|junior|jr)\b", t_low):
             return False
 
     return True
@@ -289,7 +289,7 @@ def generate_regional_targeted_jobs(family: str, user_skills: list, user_level: 
         exp_text = "2 to 4 years of practical industry experience."
     else:
         prefixes = ["Senior", "Lead", "Senior"]
-        exp_text = "5+ years of proven track record."
+        exp_text = "5+ years of proven track record leading projects."
 
     companies_by_country = {
         "eg": ["Valeo Egypt", "Instabug", "Vodafone Intelligent Solutions", "Fawry", "Swvl", "Paymob", "Robusta Studio", "Breadfast", "Synapse Analytics", "Intella"],
