@@ -103,7 +103,7 @@ def calculate_match_score(cv_data, jobs_df):
         job_dict["Matched_Skills"] = matched
         job_dict["Missing_Skills"] = missing
         
-        # إخفاء الوظائف غير المطابقة
+        # إخفاء الوظائف غير المطابقة تماماً
         if job_dict["Match_Score"] >= 15:
             ranked_jobs.append(job_dict)
 
