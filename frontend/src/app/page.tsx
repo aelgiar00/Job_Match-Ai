@@ -1,6 +1,12 @@
 import Image from 'next/image';
 "use client";
 
+import Image from 'next/image';
+import React, { useState, useEffect } from "react";
+import {
+  Briefcase,
+// ... باقي الـ imports
+
 import React, { useState, useEffect } from "react";
 import {
   Briefcase,
