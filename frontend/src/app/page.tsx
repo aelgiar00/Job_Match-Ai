@@ -23,7 +23,7 @@ import {
   MapPin,
 } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "";
 type ThemeKey = "blue" | "emerald" | "purple";
 
 interface Job {
