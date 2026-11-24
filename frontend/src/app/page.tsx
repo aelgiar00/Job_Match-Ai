@@ -103,19 +103,19 @@ export default function JobMatchPlatform() {
   const [selectedDomain, setSelectedDomain] = useState("Machine Learning / AI");
 
   // CV Builder States
-  const [builder, setBuilder] = useState({
-    name: "Omar Tarek Hamed Ahmed",
-    title: "AI & Machine Learning Engineer",
-    email: "eldeebomar440@gmail.com",
-    phone: "+20 11 426 82042"
-    linkedin: "linkedin.com/in/omar-tarek-6b9611332",
-    summary: "AI and Machine Learning Engineering student at Tanta University with hands-on experience in data analysis, predictive modeling, and developing end-to-end AI applications.",
-    experience: "Digital Egypt Pioneers Initiative (DEPI) - Trainee (2025 - Present)\nNTI Summer Training - AI & ML Intern (2026)",
-    projects: "JobMatch AI - Next-Gen Career Platform with React, TypeScript & Tailwind CSS\nAutonomous Maze Bot - BFS Algorithm & Ultrasonic Sensors",
-    education: "B.Sc. in AI & Computer Science Engineering, Tanta University",
-    skills: "Python, Scikit-learn, TensorFlow, Keras, PyTorch, OpenCV, NLP, FastAPI, Streamlit, Machine Learning, Deep Learning",
-    languages: "Arabic (Native)\nEnglish (Intermediate)",
-  });
+  const [formData, setFormData] = useState({
+  name: "Omar Tarek Hamed",
+  title: "AI Engineer",
+  email: "eldeebomar440@gmail.com",
+  phone: "+20 114 268 2042", //   
+  linkedin: "linkedin.com/in/omar-tarek-6b9611332",
+  summary: "AI and Machine Learning Engineering student at Tanta University with hands-on experience in data analysis, predictive modeling, and developing end-to-end AI applications.",
+  experience: "Freelance AI Engineer & Data Analyst (Mostaql, Khamsat, Nafezly)\nDigital Egypt Pioneers Initiative (DEPI) - Trainee (2026)\nNTI Summer Training - AI & ML Intern (2026)",
+  projects: "JobMatch AI - Career Intelligence Platform (Python, FastAPI, Scikit-learn, Streamlit)\nMyTracker - AI Habit-Tracking Web App\nMazeBot - Autonomous Maze-Solving Robot (1st Place)",
+  education: "B.Sc. in Artificial Intelligence Engineering, Faculty of Engineering, Tanta University",
+  skills: "Python, Scikit-learn, TensorFlow, Keras, PyTorch, OpenCV, NLP, FastAPI, Streamlit, Machine Learning, Deep Learning",
+  languages: "Arabic (Native)\nEnglish (Intermediate)"
+});
 
 // Load Saved Jobs safely using useEffect
   useEffect(() => {
