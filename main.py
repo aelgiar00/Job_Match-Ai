@@ -67,8 +67,15 @@ async def analyze_cv_endpoint(file: UploadFile = File(...)):
     return result
 
 @app.post("/api/match-cv-jobs")
+@app.post("/api/match-cv-jobs")
 def match_cv_jobs(req: CVMatchRequest):
-    live_jobs = fetch_live_jobs(req.role, req.country_code)
+    # دمج المسمى الوظيفي مع أهم مهارات في الـ CV عشان البحث في الـ API يكون متغير ودقيق لكل شخص
+    extra_skills = " ".join(req.skills[:2]) if req.skills else ""
+    search_query = f"{req.role} {extra_skills}".strip()
+    
+    # هنبعت الـ search_query بدل req.role
+    live_jobs = fetch_live_jobs(search_query, req.country_code)
+    
     if not live_jobs:
         return {"jobs": []}
     jobs_df = pd.DataFrame(live_jobs)
