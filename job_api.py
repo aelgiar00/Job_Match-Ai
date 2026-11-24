@@ -7,12 +7,13 @@ def fetch_live_jobs(job_role: str, country_code: str = "eg"):
     url = "https://jsearch.p.rapidapi.com/search-v2"
     query_text = f"{job_role} in {country_code}"
     
-    querystring = {
+   querystring = {
         "query": query_text,
-        "num_pages": "1",
+        "num_pages": "2",          # زودناها لـ 2 عشان نكبر دائرة البحث والـ Matcher يشتغل على داتا متنوعة
         "country": country_code,
-        "date_posted": "all"
+        "date_posted": "month"     # هيجيب الوظايف الجديدة بس بدل الثابتة
     }
+    
     
     api_key = os.getenv("RAPIDAPI_KEY", "56ac03e744msh7331c6ffc78992fp1b7d0ejsnc411b61b39b2")
     headers = {
