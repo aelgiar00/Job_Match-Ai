@@ -1,3 +1,4 @@
+import Image from 'next/image';
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -111,7 +112,7 @@ export default function JobMatchPlatform() {
   linkedin: "linkedin.com/in/omar-tarek-6b9611332",
   summary: "AI and Machine Learning Engineering student at Tanta University with hands-on experience in data analysis, predictive modeling, and developing end-to-end AI applications.",
   experience: "Freelance AI Engineer & Data Analyst (Mostaql, Khamsat, Nafezly)\nDigital Egypt Pioneers Initiative (DEPI) - Trainee (2026)\nNTI Summer Training - AI & ML Intern (2026)",
-  projects: "JobMatch AI - Career Intelligence Platform (Python, FastAPI, Scikit-learn, Streamlit)\nMyTracker - AI Habit-Tracking Web App\nMazeBot - Autonomous Maze-Solving Robot (1st Place)",
+  projects: "VYRO - - Career Intelligence Platform (Python, FastAPI, Scikit-learn, Streamlit)\nMyTracker - AI Habit-Tracking Web App\nMazeBot - Autonomous Maze-Solving Robot (1st Place)",
   education: "B.Sc. in Artificial Intelligence Engineering, Faculty of Engineering, Tanta University",
   skills: "Python, Scikit-learn, TensorFlow, Keras, PyTorch, OpenCV, NLP, FastAPI, Streamlit, Machine Learning, Deep Learning",
   languages: "Arabic (Native)\nEnglish (Intermediate)"
@@ -373,10 +374,14 @@ export default function JobMatchPlatform() {
     <div className="min-h-screen bg-[#0b0e14] text-slate-200 flex flex-col md:flex-row font-sans">
       <aside className="w-full md:w-72 bg-[#111522] border-r border-slate-800/80 p-6 flex flex-col justify-between shrink-0">
         <div>
-          <div className="flex items-center gap-3 mb-8">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center shadow-lg`}>
-              <Briefcase className="w-5 h-5 text-white" />
-            </div>
+         <div className="flex items-center gap-3 mb-8">
+            <Image 
+              src="/logojpeg.jpeg" 
+              alt="VYRO Logo"
+              width={44} 
+              height={44} 
+              className="rounded-xl shadow-lg object-cover"
+            />
             <div>
               <h1 className="text-xl font-extrabold text-white tracking-tight">
                 JobMatch <span className="text-sky-400">AI</span>
