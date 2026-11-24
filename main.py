@@ -67,13 +67,11 @@ async def analyze_cv_endpoint(file: UploadFile = File(...)):
     return result
 
 @app.post("/api/match-cv-jobs")
-@app.post("/api/match-cv-jobs")
 def match_cv_jobs(req: CVMatchRequest):
     # دمج المسمى الوظيفي مع أهم مهارات في الـ CV عشان البحث في الـ API يكون متغير ودقيق لكل شخص
     extra_skills = " ".join(req.skills[:2]) if req.skills else ""
     search_query = f"{req.role} {extra_skills}".strip()
     
-    # هنبعت الـ search_query بدل req.role
     live_jobs = fetch_live_jobs(search_query, req.country_code)
     
     if not live_jobs:
@@ -83,9 +81,9 @@ def match_cv_jobs(req: CVMatchRequest):
     return {"jobs": ranked_jobs[:12]}
 
 @app.post("/api/manual-recommendations")
-async def manual_recommendations(data: dict):
+async def manual_recommendations(req: ManualMatchRequest):
     # 1. استلام المهارات كنص من الفرونت إند
-    skills_string = data.get("skills", "")
+    skills_string = req.skills
     
     # 2. تقطيع النص لـ List عشان الحسبة الصارمة في matcher.py تشتغل عليه
     skills_list = [s.strip().lower() for s in skills_string.split(",") if s.strip()]
@@ -94,29 +92,21 @@ async def manual_recommendations(data: dict):
     cv_data = {
         "skills": skills_list,
         "skills_text": skills_string,
-        "experience_level": float(data.get("experience_years", 0)),
-        "career_level": data.get("career_level", "Entry Level")
-    }
-    
-    # 4. استدعاء الدالة اللي عدلناها (تأكد إن اسم المتغير بتاع الوظائف عندك مطابق)
-    results = calculate_match_score(cv_data, jobs_df) 
-    
-    return {"jobs": results}
-            
-    cv_data = {
-        "skills_text": " ; ".join(extracted_list) if extracted_list else cleaned_manual,
-        "skills": extracted_list,
         "experience_level": req.experience_years,
         "career_level": req.career_level,
         "role": "Tech Professional"
     }
     
-    live_jobs = fetch_live_jobs(req.skills, req.country_code)
+    # 4. جلب الوظائف الحية بناءً على المهارات المُدخلة
+    live_jobs = fetch_live_jobs(skills_string, req.country_code)
     if not live_jobs:
         return {"jobs": []}
     
     jobs_df = pd.DataFrame(live_jobs)
-    ranked_jobs = calculate_match_score(cv_data, jobs_df)
+    
+    # 5. استدعاء الدالة اللي عدلناها
+    ranked_jobs = calculate_match_score(cv_data, jobs_df) 
+    
     return {"jobs": ranked_jobs[:12]}
 
 @app.get("/api/live-jobs")
