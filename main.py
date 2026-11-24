@@ -83,19 +83,25 @@ def match_cv_jobs(req: CVMatchRequest):
     return {"jobs": ranked_jobs[:12]}
 
 @app.post("/api/manual-recommendations")
-def manual_recommendations(req: ManualMatchRequest):
-    cleaned_manual = clean_text(req.skills)
-    _, _, skills_vectorizer, _ = load_models()
-    extracted_list = [s.strip().lower() for s in req.skills.split(",") if s.strip()]
+async def manual_recommendations(data: dict):
+    # 1. استلام المهارات كنص من الفرونت إند
+    skills_string = data.get("skills", "")
     
-    if skills_vectorizer:
-        try:
-            vec = skills_vectorizer.transform([cleaned_manual])
-            vec_skills = skills_vectorizer.inverse_transform(vec)[0].tolist()
-            if vec_skills:
-                extracted_list = vec_skills
-        except Exception:
-            pass
+    # 2. تقطيع النص لـ List عشان الحسبة الصارمة في matcher.py تشتغل عليه
+    skills_list = [s.strip().lower() for s in skills_string.split(",") if s.strip()]
+    
+    # 3. تجهيز الداتا بنفس شكل الـ CV
+    cv_data = {
+        "skills": skills_list,
+        "skills_text": skills_string,
+        "experience_level": float(data.get("experience_years", 0)),
+        "career_level": data.get("career_level", "Entry Level")
+    }
+    
+    # 4. استدعاء الدالة اللي عدلناها (تأكد إن اسم المتغير بتاع الوظائف عندك مطابق)
+    results = calculate_match_score(cv_data, jobs_df) 
+    
+    return {"jobs": results}
             
     cv_data = {
         "skills_text": " ; ".join(extracted_list) if extracted_list else cleaned_manual,
