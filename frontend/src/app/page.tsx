@@ -104,16 +104,16 @@ export default function JobMatchPlatform() {
 
   // CV Builder States
   const [builder, setBuilder] = useState({
-    name: "Ahmed Belal Ibrahim Elgiar",
+    name: "Omar Tarek Hamed Ahmed",
     title: "AI & Machine Learning Engineer",
-    email: "aelgiar00@gmail.com",
-    phone: "+20 155 706 6499",
-    linkedin: "linkedin.com/in/ahmed-elgiar-49b9a5310",
-    summary: "AI and Machine Learning Engineering student with hands-on experience in data analysis, visualization, and predictive modeling.",
+    email: "eldeebomar440@gmail.com",
+    phone: "+20 11 426 82042"
+    linkedin: "linkedin.com/in/omar-tarek-6b9611332",
+    summary: "AI and Machine Learning Engineering student at Tanta University with hands-on experience in data analysis, predictive modeling, and developing end-to-end AI applications.",
     experience: "Digital Egypt Pioneers Initiative (DEPI) - Trainee (2025 - Present)\nNTI Summer Training - AI & ML Intern (2026)",
     projects: "JobMatch AI - Next-Gen Career Platform with React, TypeScript & Tailwind CSS\nAutonomous Maze Bot - BFS Algorithm & Ultrasonic Sensors",
     education: "B.Sc. in AI & Computer Science Engineering, Tanta University",
-    skills: "Python, C++, TypeScript, FastAPI, Scikit-learn, PyTorch, TensorFlow, Pandas, SQL, Tailwind CSS",
+    skills: "Python, Scikit-learn, TensorFlow, Keras, PyTorch, OpenCV, NLP, FastAPI, Streamlit, Machine Learning, Deep Learning",
     languages: "Arabic (Native)\nEnglish (Intermediate)",
   });
 
