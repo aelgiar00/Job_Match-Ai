@@ -103,11 +103,11 @@ export default function JobMatchPlatform() {
   const [selectedDomain, setSelectedDomain] = useState("Machine Learning / AI");
 
   // CV Builder States
-  const [formData, setFormData] = useState({
+  const [builder, setBuilder] = useState({
   name: "Omar Tarek Hamed",
   title: "AI Engineer",
   email: "eldeebomar440@gmail.com",
-  phone: "+20 114 268 2042", //   
+  phone: "+20 10X XXX XXXX", // حط رقمك
   linkedin: "linkedin.com/in/omar-tarek-6b9611332",
   summary: "AI and Machine Learning Engineering student at Tanta University with hands-on experience in data analysis, predictive modeling, and developing end-to-end AI applications.",
   experience: "Freelance AI Engineer & Data Analyst (Mostaql, Khamsat, Nafezly)\nDigital Egypt Pioneers Initiative (DEPI) - Trainee (2026)\nNTI Summer Training - AI & ML Intern (2026)",
