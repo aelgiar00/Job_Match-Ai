@@ -64,7 +64,7 @@ def calculate_match_score(cv_data, jobs_df):
         0.10 * jobs_df['Level_Score']
     )
 
-   ranked_jobs = []
+    ranked_jobs = []
     top_jobs = jobs_df.sort_values('Final_Score', ascending=False)
     
     for _, row in top_jobs.iterrows():
@@ -73,30 +73,37 @@ def calculate_match_score(cv_data, jobs_df):
         
         matched, missing = calculate_skill_gap(job_skills_list, user_skills_set)
         
-        # --- التعديل هنا لنسبة واقعية ---
+        # --- التعديل الصارم لحساب نسبة المهارات ---
         total_job_skills = len(matched) + len(missing)
         
-        # حساب نسبة المهارات الحقيقية بناءً على العدد
         if total_job_skills > 0:
             actual_skill_score = len(matched) / total_job_skills
         else:
-            # لو الوظيفة مفهاش مهارات واضحة، بنعتمد على الـ Similarity القديمة بس بنقللها للنص عشان ماتبقاش وهمية
             actual_skill_score = float(row['Skill_Similarity']) * 0.5 
 
-        # إعادة حساب السكور النهائي (70% مهارات حقيقية، 20% خبرة، 10% مستوى)
-        real_final_score = (0.70 * actual_skill_score) + (0.20 * float(row['Exp_Score'])) + (0.10 * float(row['Level_Score']))
+        exp_score = float(row['Exp_Score'])
+        level_score = float(row['Level_Score'])
+
+        # إعادة حساب السكور النهائي 
+        real_final_score = (0.70 * actual_skill_score) + (0.20 * exp_score) + (0.10 * level_score)
         
         job_dict = {k: (None if pd.isna(v) else v) for k, v in row.to_dict().items()}
         
-        # شيلنا الحد الأقصى (99) وبقينا نعتمد على النسبة الواقعية
-        job_dict["Match_Score"] = int(real_final_score * 100)
-        job_dict["Skill_Pct"] = round(actual_skill_score * 100, 1)
-        job_dict["Exp_Pct"] = round(min(float(row['Exp_Score']) * 100, 100), 1)
-        job_dict["Level_Pct"] = round(min(float(row['Level_Score']) * 100, 100), 1)
+        match_percentage = int(real_final_score * 100)
+        skill_percentage = round(actual_skill_score * 100, 1)
+
+        # فلتر حاسم: لو المهارات المتطابقة أقل من 30%، يتم تقييد السكور الكلي بحيث لا يتخطى 35% أبداً
+        if skill_percentage < 30:
+            match_percentage = min(match_percentage, 35)
+
+        job_dict["Match_Score"] = match_percentage
+        job_dict["Skill_Pct"] = skill_percentage
+        job_dict["Exp_Pct"] = round(min(exp_score * 100, 100), 1)
+        job_dict["Level_Pct"] = round(min(level_score * 100, 100), 1)
         job_dict["Matched_Skills"] = matched
         job_dict["Missing_Skills"] = missing
         
-        # فلتر إضافي: لو الوظيفة السكور بتاعها أقل من 15% مش هنضيفها عشان مانعرضش وظايف ملهاش علاقة خالص
+        # إخفاء الوظائف غير المطابقة
         if job_dict["Match_Score"] >= 15:
             ranked_jobs.append(job_dict)
 
