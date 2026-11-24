@@ -1,12 +1,7 @@
 import Image from 'next/image';
 "use client";
 
-import Image from 'next/image';
-import React, { useState, useEffect } from "react";
-import {
-  Briefcase,
-// ... باقي الـ imports
-
+import Image from "next/image";
 import React, { useState, useEffect } from "react";
 import {
   Briefcase,
@@ -29,8 +24,8 @@ import {
   Building2,
   MapPin,
 } from "lucide-react";
+import { supabase } from "../lib/supabase"; 
 
-// فارغ ليعمل تلقائياً على نفس دومين Vercel مع فولدر api/index.py
 const API_BASE = "";
 
 type ThemeKey = "blue" | "emerald" | "purple";
